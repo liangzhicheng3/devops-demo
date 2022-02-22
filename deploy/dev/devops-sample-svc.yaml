@@ -1,0 +1,38 @@
+#api接口版本
+apiVersion: v1
+#类型：pod/service/deployment ...
+kind: Service
+#元数据，描述信息（整个表示是Service对象）
+metadata:
+  #标签：在spec的selector里面筛选pod用的
+  labels:
+    #可以写任意内容，有点类似文章标签的作用
+    app: kubesphere
+    component: devops-demo-dev
+  #service名称
+  name: devops-demo-dev
+  #所属命名空间
+  namespace: devops-demo-dev
+#声明式api：期望内容（和pod相关，指定当前Service访问pod的策略）
+spec:
+  #service暴露端口
+  ports:
+    #指定 http/tcp 配置
+    - name: http
+      #端口
+      port: 8080
+      #协议
+      protocol: TCP
+      #目标端口
+      targetPort: 8080
+      #节点端口：外网可访问的端口
+      nodePort: 30888
+  #选择器，用于选择pod描述信息metadata中的labels
+  selector:
+    app: kubesphere
+    component: devops-demo-dev
+    tier: backend
+  #黏性session机制，类似nginx的ip-hash，默认是None（随机调度），ClientIP是来自于同一个客户端的请求调度到同一个pod中
+  sessionAffinity: None
+  #service网络类型：ClusterIP/NodePort/LoadBalance（内网访问/外网访问/负载均衡访问）
+  type: NodePort

@@ -1,0 +1,89 @@
+#api接口版本
+apiVersion: apps/v1
+#类型：pod/service/deployment ...
+kind: Deployment
+#元数据，描述信息（整个表示是Deployment对象）
+metadata:
+#标签：在spec的selector里面筛选pod用的
+  labels:
+    #可以写任意内容，有点类似文章标签的作用
+    app: kubesphere
+    component: devops-demo-dev
+    tier: backend
+  #deployment名称
+  name: devops-demo-dev
+  #所属命名空间
+  namespace: devops-demo-dev
+#声明式api：期望内容
+spec:
+  #整个创建过程的deadline，此处为如果创建时间超过十分钟就会部署失败
+  progressDeadlineSeconds: 600
+  #副本数量，描述该deployment所创建pod的副本数量（对应kubesphere界面->devops-demo-dev项目->工作负载->副本运行状态，期望副本对应值）
+  replicas: 1
+  #选择器
+  selector:
+    #基于metadata中的labels进行匹配pod
+    matchLabels:
+      app: kubesphere
+      component: devops-demo-dev
+      tier: backend
+  #pod模板，也就是按照什么内容来创建pod
+  template:
+    #元信息
+    metadata:
+      labels:
+        app: kubesphere
+        component: devops-demo-dev
+        tier: backend
+    #模板的期望内容
+    spec:
+      #容器配置：复数形式也就意味着可以配置多个
+      containers:
+        #环境变量
+        - env:
+            - name: CACHE_IGNORE
+              value: js|html
+            - name: CACHE_PUBLIC_EXPIRATION
+              value: 3d
+          #镜像名称
+          image: $DOCKERHUB_NAMESPACE/$APP_NAME:SNAPSHOT-$BRANCH_NAME-$BUILD_NUMBER
+          #就绪探针，会在容器启动完成后按照下方配置发起http请求测试该容器是否真的启动成功
+          readinessProbe:
+            #发送http get请求
+            httpGet:
+              #请求路径为/目录
+              path: /
+              #请求端口8080
+              port: 8080
+            #探测超时时间
+            timeoutSeconds: 10
+            #当探测成功后，连续探测失败多少次才认为是失败
+            failureThreshold: 30
+            #探测频率
+            periodSeconds: 5
+          #镜像拉取策略：always->永远尝试去拉取仓库，IfNotPresent->优先使用本地，Never->只使用本地，如果本地没有就报错
+          imagePullPolicy: Always
+          #pod名称
+          name: devops-demo
+          #容器端口
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          #资源限制
+          resources:
+            limits:
+              cpu: 300m
+              memory: 600Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+          #终止消息存放路径：当容器意外关闭后，把当前容器的运行状况保存到该路径
+          terminationMessagePath: /dev/termination-log
+          #终止消息策略：File->以文件形式输出，FallbackToLogsOnError->输出错误信息到日志
+          terminationMessagePolicy: File
+      #DNS策略：None->无任何策略，Default->默认，ClusterFirst->集群DNS优先，ClusterFirstWithHostNet->集群DNS优先，并伴随着使用宿主机网络
+      dnsPolicy: ClusterFirst
+      #容器重启策略：等同docker的重启策略
+      restartPolicy: Always
+      #pod关闭时的等待时间：优雅关闭，pod关闭时会发出终止信号，容器中的进程接收到信号可以进行销毁操作，时间到以后才终止pod
+      terminationGracePeriodSeconds: 30
